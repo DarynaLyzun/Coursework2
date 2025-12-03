@@ -1,0 +1,10 @@
+# Core Framework
+fastapi[standard]
+
+# Database Layer
+mariadb
+sqlalchemy
+alembic
+python-dotenv
+
+pytest
