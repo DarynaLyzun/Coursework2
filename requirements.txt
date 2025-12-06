@@ -1,5 +1,7 @@
 # Core Framework
 fastapi[standard]
+pydantic-settings
+httpx
 
 # Database Layer
 mariadb

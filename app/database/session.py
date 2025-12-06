@@ -5,20 +5,12 @@ It configures the connection pool settings to ensure stability and provides
 a dependency callable for FastAPI to manage database sessions per request.
 """
 
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from dotenv import load_dotenv
-
-load_dotenv()
-
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not SQLALCHEMY_DATABASE_URL:
-    raise ValueError("DATABASE_URL is not set in the .env file")
+from app.core.config import settings
 
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
+    str(settings.database_url),
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20
