@@ -33,7 +33,7 @@ def test_app_lifespan_and_root():
         assert app.state.ai_service is None
         
 def test_router_is_included():
-    """Verifies that the recommendation router is correctly registered."""
+    """Verifies that the routers are correctly registered."""
     route_paths = [
         route.path 
         for route in app.routes 
@@ -41,3 +41,4 @@ def test_router_is_included():
     ]
     
     assert "/recommend/{city}" in route_paths
+    assert "/signup" in route_paths

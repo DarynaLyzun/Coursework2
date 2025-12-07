@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.services.ai_service import AIService
 from app.routers.recommendation import router as recommendation_router
+from app.routers.auth import router as auth_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -25,6 +26,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(recommendation_router)
+app.include_router(auth_router)
 
 @app.get("/")
 async def root():

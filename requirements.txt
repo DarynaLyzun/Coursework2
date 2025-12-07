@@ -17,3 +17,7 @@ sentencepiece
 # Testing
 pytest
 pytest-asyncio
+
+# Security
+passlib
+bcrypt==3.2.2
