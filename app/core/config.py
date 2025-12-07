@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     """Application configuration settings.
 
     Attributes:
-        database_url (str): The connection string for the MariaDB database.
+        database_url (MariaDBDsn): The connection string for the MariaDB database.
         openweather_api_key (str): A key for authorizing requests to the OpenWeatherMap API.
     """
     database_url: MariaDBDsn
