@@ -86,7 +86,7 @@ class ClothingWeather(Base):
     item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), primary_key=True)
     tag_id: Mapped[int] = mapped_column(ForeignKey("weather_tags.id"), primary_key=True)
     
-    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    confidence: Mapped[int] = mapped_column(Float, nullable=False)
 
     item: Mapped["Item"] = relationship(back_populates="weather_links")
     tag: Mapped["WeatherTag"] = relationship(back_populates="item_links")

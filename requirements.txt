@@ -9,5 +9,11 @@ sqlalchemy
 alembic
 python-dotenv
 
+# AI Model
+torch
+transformers
+sentencepiece
+
+# Testing
 pytest
 pytest-asyncio
