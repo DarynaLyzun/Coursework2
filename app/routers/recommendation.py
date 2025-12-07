@@ -7,6 +7,21 @@ based on real-time weather data and AI-powered description analysis.
 from fastapi import APIRouter, Request, Depends, HTTPException
 import httpx
 from app.services.weather_service import WeatherService
+from app.core.utils import get_temperature_label, get_humidity_label, get_wind_label
+
+CANDIDATE_LABELS = [
+    "Rain",
+    "Cold",
+    "Hot",
+    "Windy",
+    "Freezing",
+    "Warm",
+    "Sunny",
+    "Snow",
+    "Stormy",
+    "Mild",
+    "Cool"
+]
 
 router = APIRouter()
 
@@ -54,19 +69,36 @@ async def recommend(
 
     if ai is None:
         raise HTTPException(status_code=503, detail="AI Service is currently unavailable.")
-
-    candidate_labels = [
-        "Rain",
-        "Cold",
-        "Hot",
-        "Windy",
-        "Freezing",
-        "Warm"
-    ]
-
-    classification_result: dict = ai.classify_description(
-        text=weather.description,
-        candidate_labels=candidate_labels
+    
+    temp_label = get_temperature_label(weather.temperature)
+    feels_label = get_temperature_label(weather.feels_like)
+    humid_label = get_humidity_label(weather.humidity)
+    wind_label = get_wind_label(weather.wind_speed)
+    
+    weather_description = (
+        f"The weather is {weather.description}. "
+        f"The temperature is {temp_label} and it feels {feels_label}. "
+        f"It is {humid_label} and {wind_label}."
     )
 
-    return {"weather": weather} | classification_result
+    classification_result: dict = ai.classify_description(
+        text=weather_description,
+        candidate_labels=CANDIDATE_LABELS
+    )
+    
+    filtered_result = {
+        label: score 
+        for label, score in classification_result.items() 
+        if score >= 85
+    }
+
+    if not filtered_result:
+        sorted_result = sorted(
+            classification_result.items(), 
+            key=lambda x: x[1], 
+            reverse=True
+        )
+        
+        filtered_result = dict(sorted_result[:2])
+
+    return {"weather": weather} | filtered_result

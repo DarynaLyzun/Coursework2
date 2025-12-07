@@ -25,5 +25,5 @@ class WeatherData(BaseModel):
     temperature: float
     feels_like: float
     wind_speed: float
-    humidity: int = Field(ge=0, le=100, description="Humidity percentage")
+    humidity: int
     location: str
