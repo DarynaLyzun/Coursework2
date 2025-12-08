@@ -15,7 +15,8 @@ from app.core.config import Settings
 
 VALID_ENV = {
     "DATABASE_URL": "mariadb+mariadbconnector://user:pass@localhost:3306/test_db",
-    "OPENWEATHER_API_KEY": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"  # 32 hex chars
+    "OPENWEATHER_API_KEY": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
+    "SECRET_KEY": "supersecretkey123"
 }
 
 # --- Happy Path Tests ---
@@ -31,6 +32,9 @@ def test_settings_load_correctly():
         
         assert str(settings.database_url) == VALID_ENV["DATABASE_URL"]
         assert settings.openweather_api_key == VALID_ENV["OPENWEATHER_API_KEY"]
+        assert settings.secret_key == "supersecretkey123"
+        assert settings.algorithm == "HS256"
+        assert settings.access_token_expire_minutes == 30
 
 # --- Missing Variable Tests ---
 
