@@ -9,17 +9,38 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
 from app.routers import recommendation
 from app.schemas.weather import WeatherData
+from app.routers.auth import get_current_user
+from app.database.session import get_db
+from app.database.models import User, Item, WeatherTag, ClothingWeather
 
-def test_recommend_endpoint():
+def test_recommend_endpoint(db_session: Session):
     """Verifies that the recommendation endpoint correctly orchestrates services.
 
     Ensures that:
     1. Weather data is fetched (via dependency override).
     2. AI classification is performed (via app.state mock).
-    3. The response combines both results into a single dictionary.
+    3. The response combines weather, tags, AND database items.
     """
+    user = User(email="rec_test@example.com", hashed_password="pw")
+    db_session.add(user)
+    db_session.commit()
+    
+    coat = Item(description="Heavy Raincoat", owner=user)
+    db_session.add(coat)
+    db_session.commit()
+    
+    tag = WeatherTag(name="Rain")
+    db_session.add(tag)
+    db_session.commit()
+    
+    link = ClothingWeather(item=coat, tag=tag, confidence=99)
+    db_session.add(link)
+    db_session.commit()
+
     app = FastAPI()
     app.include_router(recommendation.router)
 
@@ -39,6 +60,8 @@ def test_recommend_endpoint():
 
     app.state.ai_service = mock_ai
     app.dependency_overrides[recommendation.get_weather_service] = lambda: mock_weather_service
+    app.dependency_overrides[get_db] = lambda: db_session
+    app.dependency_overrides[get_current_user] = lambda: user
 
     client = TestClient(app)
     response = client.get("/recommend/London")
@@ -46,16 +69,18 @@ def test_recommend_endpoint():
     assert response.status_code == 200
     data = response.json()
     assert data["weather"]["description"] == "rainy"
-    assert data["Rain"] == 95
+    assert data["tags"]["Rain"] == 95
+    assert len(data["items"]) == 1
+    assert data["items"][0]["description"] == "Heavy Raincoat"
 
-def test_recommend_city_not_found():
-    """Verifies that a 404 from the weather service is passed through to the user.
-
-    Simulates an upstream 404 error (City Not Found) and ensures the API
-    transforms this into a user-friendly 404 HTTPException.
-    """
+def test_recommend_city_not_found(db_session: Session):
+    """Verifies that a 404 from the weather service is passed through to the user."""
     app = FastAPI()
     app.include_router(recommendation.router)
+    
+    user = User(email="error_test@example.com", hashed_password="pw")
+    db_session.add(user)
+    db_session.commit()
 
     mock_weather_service = AsyncMock()
     mock_weather_service.get_current_weather.side_effect = httpx.HTTPStatusError(
@@ -63,6 +88,8 @@ def test_recommend_city_not_found():
     )
 
     app.dependency_overrides[recommendation.get_weather_service] = lambda: mock_weather_service
+    app.dependency_overrides[get_db] = lambda: db_session
+    app.dependency_overrides[get_current_user] = lambda: user
 
     client = TestClient(app)
     response = client.get("/recommend/Atlantis")
@@ -70,21 +97,22 @@ def test_recommend_city_not_found():
     assert response.status_code == 404
     assert response.json()["detail"] == "City 'Atlantis' not found."
 
-def test_recommend_ai_service_unavailable():
-    """Verifies that the endpoint returns a 503 error if the AI service is missing.
-
-    Simulates a scenario where app.state.ai_service is None (e.g., initialization
-    failure) and ensures the API returns a 503 Service Unavailable response
-    instead of crashing with a 500 error.
-    """
+def test_recommend_ai_service_unavailable(db_session: Session):
+    """Verifies that the endpoint returns a 503 error if the AI service is missing."""
     app = FastAPI()
     app.include_router(recommendation.router)
+
+    user = User(email="ai_fail_test@example.com", hashed_password="pw")
+    db_session.add(user)
+    db_session.commit()
 
     mock_weather_service = AsyncMock()
     mock_weather_service.get_current_weather.return_value = WeatherData(
         description="test", temperature=0, feels_like=0, wind_speed=0, humidity=0, location="Test"
     )
     app.dependency_overrides[recommendation.get_weather_service] = lambda: mock_weather_service
+    app.dependency_overrides[get_db] = lambda: db_session
+    app.dependency_overrides[get_current_user] = lambda: user
 
     app.state.ai_service = None
 

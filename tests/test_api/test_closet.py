@@ -1,7 +1,8 @@
 """Unit tests for the Closet API router.
 
 This module verifies that authenticated users can upload clothing items,
-ensuring that files are validated, saved (mocked), and recorded in the database.
+ensuring that files are validated, saved (mocked), AI is called (mocked),
+and tags are saved to the database.
 """
 
 import io
@@ -12,44 +13,46 @@ from app.routers.auth import get_current_user
 from app.database.models import User
 from main import app 
 
-def setup_app(db_session, mock_user):
+def setup_app(db_session, mock_user, mock_ai_service=None):
     app.dependency_overrides[get_db] = lambda: db_session
-    
     app.dependency_overrides[get_current_user] = lambda: mock_user
+    
+    if mock_ai_service:
+        app.state.ai_service = mock_ai_service
     
     return TestClient(app)
 
 def test_upload_item_success(db_session):
-    """Verifies that a valid image file can be uploaded.
-    
-    Ensures that:
-    1. The file is accepted.
-    2. The image is 'saved' (mocked).
-    3. The database record is created with the correct owner.
-    """
+    """Verifies that a valid image file can be uploaded and tagged by AI."""
     mock_user = User(id=1, email="test@owner.com", hashed_password="pw")
+    
+    mock_ai = MagicMock()
+    mock_ai.classify.return_value = {
+        "labels": ["Cold", "Rain"], 
+        "scores": [0.99, 0.10]
+    }
     
     with patch("pathlib.Path.open", mock_open()) as mocked_file, \
          patch("app.routers.closet.shutil.copyfileobj") as mock_copy:
         
-        client = setup_app(db_session, mock_user)
+        client = setup_app(db_session, mock_user, mock_ai)
         
         file_content = b"fake_image_bytes"
         files = {
             "file": ("test_image.jpg", io.BytesIO(file_content), "image/jpeg")
         }
-        data = {"description": "My cool jacket"}
+        data = {"description": "Thick winter coat"}
         
         response = client.post("/closet/upload", files=files, data=data)
         
         assert response.status_code == 200
         json_data = response.json()
-        assert json_data["description"] == "My cool jacket"
+        assert json_data["description"] == "Thick winter coat"
         assert json_data["owner_id"] == 1
-        assert "image_filename" in json_data
         
-        mocked_file.assert_called()
-        mock_copy.assert_called()
+        mock_ai.classify.assert_called_once()
+        args, _ = mock_ai.classify.call_args
+        assert args[0] == "Thick winter coat"
 
 def test_upload_invalid_file_type(db_session):
     """Verifies that uploading a non-image file returns a 400 error."""

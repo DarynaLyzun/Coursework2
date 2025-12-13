@@ -6,7 +6,7 @@ mappings and type hints.
 """
 
 from typing import List, Optional
-from sqlalchemy import ForeignKey, String, Text, Float
+from sqlalchemy import ForeignKey, String, Text, Integer
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 class Base(DeclarativeBase):
@@ -86,7 +86,7 @@ class ClothingWeather(Base):
     item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), primary_key=True)
     tag_id: Mapped[int] = mapped_column(ForeignKey("weather_tags.id"), primary_key=True)
     
-    confidence: Mapped[int] = mapped_column(Float, nullable=False)
+    confidence: Mapped[int] = mapped_column(Integer, nullable=False)
 
     item: Mapped["Item"] = relationship(back_populates="weather_links")
     tag: Mapped["WeatherTag"] = relationship(back_populates="item_links")

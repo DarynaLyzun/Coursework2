@@ -4,8 +4,29 @@ This module contains helper functions for data transformation, such as
 converting numeric weather metrics into descriptive text labels.
 """
 
+CANDIDATE_LABELS = [
+    "Rain",
+    "Cold",
+    "Hot",
+    "Windy",
+    "Freezing",
+    "Warm",
+    "Sunny",
+    "Snow",
+    "Stormy",
+    "Mild",
+    "Cool"
+]
+
 def get_temperature_label(temp: float) -> str:
-    """Converts a numeric temperature into a descriptive label based on user rules."""
+    """Converts a numeric temperature into a descriptive label based on user rules.
+
+    Args:
+        temp (float): The temperature in degrees Celsius.
+
+    Returns:
+        str: A text label (e.g., "Freezing", "Cool", "Hot").
+    """
     rules = [
         (0, "Freezing"),
         (5, "Cold"),
@@ -21,7 +42,14 @@ def get_temperature_label(temp: float) -> str:
     return "Hot"
 
 def get_humidity_label(humidity: int) -> str:
-    """Converts humidity percentage into a descriptive label."""
+    """Converts humidity percentage into a descriptive label.
+
+    Args:
+        humidity (int): The humidity percentage (0-100).
+
+    Returns:
+        str: A text label (e.g., "Dry", "Comfortable", "Humid").
+    """
     rules = [
         (30, "Dry"),
         (60, "Comfortable"),
@@ -33,7 +61,14 @@ def get_humidity_label(humidity: int) -> str:
     return "Humid"
 
 def get_wind_label(speed: float) -> str:
-    """Converts wind speed (m/s) into a descriptive label (Beaufort scale)."""
+    """Converts wind speed (m/s) into a descriptive label (Beaufort scale).
+
+    Args:
+        speed (float): The wind speed in meters per second.
+
+    Returns:
+        str: A text label (e.g., "Calm", "Gentle Breeze", "Storm").
+    """
     rules = [
         (1, "Calm"),
         (4, "Light Breeze"),
