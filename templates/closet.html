@@ -72,25 +72,17 @@
             const res = await fetch('/closet', { headers: { "Authorization": `Bearer ${getToken()}` } });
             if (res.status === 401) { logout(); return; }
             
-<<<<<<< HEAD
             if (!res.ok) {
                 const errData = await res.json();
                 throw new Error(errData.detail || "Failed to fetch items");
             }
-            
-=======
->>>>>>> 17691e1586fad95645526960ae3a34970e765427
             const items = await res.json();
             console.log("Closet items:", items);
             
             const grid = document.getElementById('closet-grid');
             grid.innerHTML = '';
             
-<<<<<<< HEAD
             if (!Array.isArray(items) || items.length === 0) {
-=======
-            if (!items || items.length === 0) {
->>>>>>> 17691e1586fad95645526960ae3a34970e765427
                 grid.innerHTML = '<div style="grid-column: span 3; color: #555; font-family: monospace; padding: 2rem; border: 1px dashed #333;">No items found in the archive.</div>';
                 return;
             }
@@ -114,11 +106,7 @@
                         ${tagsHtml}
                         <img src="/static/images/${item.image_filename}" 
                              style="width: 100%; height: 100%; object-fit: cover; display: block;"
-<<<<<<< HEAD
-                             onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=&quot;display:flex;align-items:center;justify-content:center;height:100%;background:#222;color:#555;&quot;>Image not found</div>'">
-=======
                              onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100%;background:#222;color:#555;\'>Image not found</div>'">
->>>>>>> 17691e1586fad95645526960ae3a34970e765427
                     </div>
                     <div class="card-details" style="flex-shrink: 0; background: #111; padding: 12px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #222;">
                         <span class="text-xs text-gray" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; color: #aaa; font-family: monospace;">${item.description}</span>
@@ -132,11 +120,7 @@
 
         } catch (err) { 
             console.error(err);
-<<<<<<< HEAD
             document.getElementById('closet-grid').innerHTML = `<div style="color:red; grid-column: span 3; padding: 2rem; border: 1px solid red;">Error loading items: ${err.message}</div>`;
-=======
-            document.getElementById('closet-grid').innerHTML = '<div style="color:red;">Error loading items. Check console.</div>';
->>>>>>> 17691e1586fad95645526960ae3a34970e765427
         }
     }
 
