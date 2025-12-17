@@ -1,23 +1,48 @@
-"""Recommendation API router."""
-from typing import Annotated, List, Sequence
-from sqlalchemy.orm import Session
-from fastapi import APIRouter, Request, Depends, HTTPException
-import httpx
+"""API endpoints for generating clothing recommendations."""
 
-from app.database.session import get_db
-from app.database.models import User, Item
-from app.services.weather_service import WeatherService
-from app.core.utils import get_temperature_label, get_humidity_label, get_wind_label, CANDIDATE_LABELS, INCOMPATIBLE_KEYWORDS
-from app.routers.auth import get_current_user
+from typing import Annotated, List, Sequence
+
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
+
+from app.core.utils import (
+    CANDIDATE_LABELS,
+    INCOMPATIBLE_KEYWORDS,
+    get_humidity_label,
+    get_temperature_label,
+    get_wind_label,
+)
 from app.crud.tag_repo import get_items_by_tags
+from app.database.models import Item, User
+from app.database.session import get_db
+from app.routers.auth import get_current_user
+from app.services.weather_service import WeatherService
 
 router = APIRouter()
 
+
 def get_weather_service() -> WeatherService:
+    """Dependency provider for the WeatherService.
+
+    Returns:
+        WeatherService: A new instance of the weather service.
+    """
     return WeatherService()
 
-def filter_incompatible_items(items: Sequence[Item], weather_tags: List[str]) -> List[Item]:
-    """Filters out items whose description conflicts with the active weather tags."""
+
+def filter_incompatible_items(
+    items: Sequence[Item], weather_tags: List[str]
+) -> List[Item]:
+    """Filters items that conflict with the current weather tags.
+
+    Args:
+        items (Sequence[Item]): The list of items to filter.
+        weather_tags (List[str]): The active weather tags.
+
+    Returns:
+        List[Item]: A filtered list of suitable items.
+    """
     filtered_items = []
     for item in items:
         desc = item.description.lower()
@@ -27,9 +52,12 @@ def filter_incompatible_items(items: Sequence[Item], weather_tags: List[str]) ->
                 if any(k in desc for k in INCOMPATIBLE_KEYWORDS[tag]):
                     is_bad = True
                     break
-            if is_bad: break
-        if not is_bad: filtered_items.append(item)
+            if is_bad:
+                break
+        if not is_bad:
+            filtered_items.append(item)
     return filtered_items
+
 
 @router.get("/recommend/{city}")
 async def recommend(
@@ -37,46 +65,52 @@ async def recommend(
     request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     weather_service: WeatherService = Depends(get_weather_service),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """Generates a weather-based clothing recommendation for a specific city.
-
-    Fetches the current weather and uses the NLI model (loaded in app.state)
-    to classify the weather description against a set of clothing-relevant tags.
+    """Generates recommendations based on the current weather in a city.
 
     Args:
-        city (str): The name of the city to analyze.
-        request (Request): The incoming request, used to access app.state.ai_service.
-        current_user (User): The authenticated user asking for a recommendation.
-        weather_service (WeatherService): The service for fetching weather data.
-        db (Session): Database session.
+        city (str): The target city.
+        request (Request): The request object containing application state.
+        current_user (User): The authenticated user.
+        weather_service (WeatherService): Service to fetch weather data.
+        db (Session): The database session.
 
     Returns:
-        dict: A combined dictionary containing the weather data and the
-            confidence scores for each label (e.g., Rain, Cold, Hot).
+        dict: A dictionary containing weather data, detected tags, and recommended items.
 
     Raises:
-        HTTPException(404): If the city provided does not exist.
-        HTTPException(503): If the AI Service is not initialized or unavailable.
-        httpx.HTTPStatusError: For upstream weather API errors other than 404.
+        HTTPException: If the city is not found or the AI service is unavailable.
     """
     try:
         weather = await weather_service.get_current_weather(city=city)
     except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404: raise HTTPException(404, detail=f"City '{city}' not found.")
+        if e.response.status_code == 404:
+            raise HTTPException(404, detail=f"City '{city}' not found.")
         raise e
 
     ai = request.app.state.ai_service
-    if not ai: raise HTTPException(503, detail="AI Service unavailable.")
-    
-    desc = f"The weather is {weather.description}. Temp is {get_temperature_label(weather.temperature)}. {get_humidity_label(weather.humidity)} and {get_wind_label(weather.wind_speed)}."
+    if not ai:
+        raise HTTPException(503, detail="AI Service unavailable.")
 
-    results = ai.classify_description(desc, CANDIDATE_LABELS, hypothesis_template="The weather condition described is {}.")
-    
+    desc = (
+        f"The weather is {weather.description}. "
+        f"Temp is {get_temperature_label(weather.temperature)}. "
+        f"{get_humidity_label(weather.humidity)} and {get_wind_label(weather.wind_speed)}."
+    )
+
+    results = ai.classify_description(
+        desc,
+        CANDIDATE_LABELS,
+        hypothesis_template="The weather condition described is {}.",
+    )
+
     filtered_tags = {l: s for l, s in results.items() if s >= 85}
     if not filtered_tags:
-        filtered_tags = dict(sorted(results.items(), key=lambda x: x[1], reverse=True)[:2])
-        
+        filtered_tags = dict(
+            sorted(results.items(), key=lambda x: x[1], reverse=True)[:2]
+        )
+
     items = get_items_by_tags(db, current_user.id, list(filtered_tags))
     final_items = filter_incompatible_items(items, list(filtered_tags.keys()))
 

@@ -1,45 +1,41 @@
-"""Service for interacting with the OpenWeatherMap API.
-
-This module handles the external communication with weather providers,
-fetching real-time data and normalizing it into the application's
-schema formats.
-"""
+"""Service for interacting with the OpenWeatherMap API."""
 
 import httpx
+
 from app.core.config import settings
 from app.schemas.weather import WeatherData
 
+
 class WeatherService:
-    """Handles communication with the OpenWeatherMap API.
+    """Handles fetching and processing weather data.
 
     Attributes:
-        BASE_URL (str): The endpoint for the current weather data.
+        BASE_URL (str): The OpenWeatherMap API endpoint.
     """
+
     BASE_URL: str = "https://api.openweathermap.org/data/2.5/weather"
 
     async def get_current_weather(self, city: str) -> WeatherData:
-        """Fetches and normalizes current weather data for a specific city.
+        """Fetches current weather data for a specific city.
 
         Args:
-            city (str): The name of the city to look up (e.g., "London").
+            city (str): The name of the city.
 
         Returns:
-            WeatherData: A validated object containing description, temperature,
-                and other atmospheric metrics.
+            WeatherData: The normalized weather data.
 
         Raises:
-            httpx.HTTPStatusError: If the API returns a 4xx or 5xx error
-                (e.g., city not found or invalid API key).
+            httpx.HTTPStatusError: If the API request fails.
         """
         params = {
             "q": city,
             "appid": settings.openweather_api_key,
-            "units": "metric"
+            "units": "metric",
         }
 
         async with httpx.AsyncClient() as client:
             response = await client.get(url=self.BASE_URL, params=params)
-            
+
             response.raise_for_status()
             data = response.json()
 
@@ -49,5 +45,5 @@ class WeatherService:
                 feels_like=data["main"]["feels_like"],
                 wind_speed=data["wind"]["speed"],
                 humidity=data["main"]["humidity"],
-                location=data["name"]
+                location=data["name"],
             )

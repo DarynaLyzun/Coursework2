@@ -1,31 +1,36 @@
-"""CRUD operations for Weather Tags."""
+"""Data access operations for Weather Tags."""
+
 from typing import Sequence
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from app.database.models import WeatherTag, ClothingWeather, Item
+
+from app.database.models import ClothingWeather, Item, WeatherTag
+
 
 def get_tag_by_name(db: Session, name: str) -> WeatherTag | None:
-    """Retrieves a tag by its name.
+    """Retrieves a weather tag by its unique name.
 
     Args:
         db (Session): The database session.
-        name (str): The name of the weather tag (e.g., "Cold").
+        name (str): The name of the tag.
 
     Returns:
-        WeatherTag | None: The tag object if found, otherwise None.
+        WeatherTag | None: The tag instance if found, otherwise None.
     """
     statement = select(WeatherTag).where(WeatherTag.name == name)
     return db.scalar(statement)
 
+
 def create_tag(db: Session, name: str) -> WeatherTag:
-    """Creates a new weather tag in the database.
+    """Creates a new weather tag.
 
     Args:
         db (Session): The database session.
         name (str): The name of the new tag.
 
     Returns:
-        WeatherTag: The created tag object.
+        WeatherTag: The created tag instance.
     """
     tag = WeatherTag(name=name)
     db.add(tag)
@@ -33,59 +38,56 @@ def create_tag(db: Session, name: str) -> WeatherTag:
     db.refresh(tag)
     return tag
 
-def get_or_create_tag(db: Session, name: str) -> WeatherTag:
-    """Retrieves a tag if it exists, otherwise creates it.
 
-    This helper function ensures that we don't create duplicate tags
-    for the same weather condition.
+def get_or_create_tag(db: Session, name: str) -> WeatherTag:
+    """Retrieves an existing tag or creates a new one if it does not exist.
 
     Args:
         db (Session): The database session.
         name (str): The name of the tag.
 
     Returns:
-        WeatherTag: The existing or newly created tag.
+        WeatherTag: The retrieved or created tag instance.
     """
     tag = get_tag_by_name(db, name)
     if not tag:
         tag = create_tag(db, name)
     return tag
 
-def link_item_to_tag(db: Session, item_id: int, tag_id: int, confidence: int) -> ClothingWeather:
-    """Links an item to a weather tag with a confidence score.
+
+def link_item_to_tag(
+    db: Session, item_id: int, tag_id: int, confidence: int
+) -> ClothingWeather:
+    """Associates an item with a weather tag including a confidence score.
 
     Args:
         db (Session): The database session.
-        item_id (int): The ID of the clothing item.
-        tag_id (int): The ID of the weather tag.
-        confidence (int): The AI's confidence score (0-100).
+        item_id (int): The ID of the item.
+        tag_id (int): The ID of the tag.
+        confidence (int): The confidence score of the association.
 
     Returns:
-        ClothingWeather: The created association record.
+        ClothingWeather: The created association object.
     """
-    link = ClothingWeather(
-        item_id=item_id, 
-        tag_id=tag_id, 
-        confidence=confidence
-    )
+    link = ClothingWeather(item_id=item_id, tag_id=tag_id, confidence=confidence)
     db.add(link)
     db.commit()
     db.refresh(link)
     return link
 
-def get_items_by_tags(db: Session, user_id: int, tag_names: list[str]) -> Sequence[Item]:
-    """Retrieves clothing items that match the given weather tags for a specific user.
 
-    Performs a join across Item, ClothingWeather, and WeatherTag to find items
-    owned by the user that are associated with any of the provided tag names.
+def get_items_by_tags(
+    db: Session, user_id: int, tag_names: list[str]
+) -> Sequence[Item]:
+    """Retrieves items owned by a user that match any of the provided tags.
 
     Args:
         db (Session): The database session.
-        user_id (int): The ID of the user who owns the items.
-        tag_names (list[str]): A list of weather tag names (e.g., ["Cold", "Rain"]).
+        user_id (int): The ID of the user.
+        tag_names (list[str]): A list of tag names to filter by.
 
     Returns:
-        Sequence[Item]: A list of matching clothing items.
+        Sequence[Item]: A list of matching items.
     """
     statement = (
         select(Item)

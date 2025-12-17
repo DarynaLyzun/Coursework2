@@ -1,9 +1,4 @@
-"""Main entry point for the FastAPI application.
-
-This module initializes the FastAPI app, sets up static files, templates,
-and middleware (if any). It also defines the lifespan context for
-startup and shutdown events.
-"""
+"""Main application entry point and configuration."""
 
 from contextlib import asynccontextmanager
 
@@ -12,20 +7,17 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.routers import auth, pages, closet, recommendation
+from app.routers import auth, closet, pages, recommendation
 from app.services.ai_service import AIService
 from app.services.weather_service import WeatherService
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manages the application lifespan.
-
-    Initializes global services (AI, Weather) on startup and cleans them up
-    on shutdown.
+    """Manages the lifecycle of application services.
 
     Args:
-        app (FastAPI): The FastAPI application instance.
+        app (FastAPI): The application instance.
     """
     app.state.ai_service = AIService()
     app.state.weather_service = WeatherService()
@@ -51,6 +43,6 @@ async def root():
     """Redirects the root URL to the dashboard.
 
     Returns:
-        RedirectResponse: A redirection to the '/dashboard' route.
+        RedirectResponse: A redirect to the dashboard.
     """
     return RedirectResponse(url="/dashboard")
