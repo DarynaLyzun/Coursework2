@@ -1,9 +1,4 @@
-"""CRUD operations for Weather Tags.
-
-This module handles creating and retrieving weather tags, as well as linking
-them to clothing items with specific confidence scores.
-"""
-
+"""CRUD operations for Weather Tags."""
 from typing import Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -98,5 +93,6 @@ def get_items_by_tags(db: Session, user_id: int, tag_names: list[str]) -> Sequen
         .join(WeatherTag, ClothingWeather.tag_id == WeatherTag.id)
         .where(Item.owner_id == user_id)
         .where(WeatherTag.name.in_(tag_names))
+        .distinct()
     )
     return db.scalars(statement).all()

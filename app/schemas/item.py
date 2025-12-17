@@ -1,38 +1,33 @@
-"""Pydantic models for Item management.
+"""Pydantic schemas for Item data."""
 
-This module defines the schemas used for creating and retrieving clothing items,
-ensuring proper data validation and serialization for the API.
-"""
+from typing import List, Optional
+from pydantic import BaseModel
 
-from typing import Optional
-from pydantic import BaseModel, ConfigDict
 
 class ItemBase(BaseModel):
-    """Shared properties for Item schemas.
-    
-    Attributes:
-        description (str): A text description of the clothing item.
-        image_filename (Optional[str]): The path to the image, if one exists.
-    """
+    """Base schema for an item."""
     description: str
-    image_filename: Optional[str] = None
+
 
 class ItemCreate(ItemBase):
-    """Schema for item creation requests.
-    
-    Inherits all fields from ItemBase. No additional fields are required
-    for creation as the owner_id is derived from the current user.
-    """
-    pass
+    """Schema for creating an item."""
+    image_filename: Optional[str] = None
+
 
 class ItemResponse(ItemBase):
-    """Schema for item API responses.
-    
+    """Schema for item response data.
+
     Attributes:
-        id (int): The unique database identifier.
-        owner_id (int): The ID of the user who owns this item.
+        id (int): Item ID.
+        owner_id (int): Owner's User ID.
+        image_filename (Optional[str]): Filename of the image.
+        tags (List[str]): List of associated weather tags.
     """
     id: int
     owner_id: int
-    
-    model_config = ConfigDict(from_attributes=True)
+    image_filename: Optional[str] = None
+    tags: List[str] = []
+
+    class Config:
+        """Pydantic configuration."""
+        from_attributes = True

@@ -1,30 +1,35 @@
-"""Recommendation API router.
-
-This module defines the endpoints for generating clothing recommendations
-based on real-time weather data and AI-powered description analysis.
-"""
-
-from typing import Annotated
+"""Recommendation API router."""
+from typing import Annotated, List, Sequence
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Request, Depends, HTTPException
 import httpx
 
 from app.database.session import get_db
-from app.database.models import User
+from app.database.models import User, Item
 from app.services.weather_service import WeatherService
-from app.core.utils import get_temperature_label, get_humidity_label, get_wind_label, CANDIDATE_LABELS
+from app.core.utils import get_temperature_label, get_humidity_label, get_wind_label, CANDIDATE_LABELS, INCOMPATIBLE_KEYWORDS
 from app.routers.auth import get_current_user
 from app.crud.tag_repo import get_items_by_tags
 
 router = APIRouter()
 
 def get_weather_service() -> WeatherService:
-    """Dependency provider for the WeatherService.
-
-    Returns:
-        WeatherService: An instance of the service to fetch real-time weather.
-    """
     return WeatherService()
+
+def filter_incompatible_items(items: Sequence[Item], weather_tags: List[str]) -> List[Item]:
+    """Filters out items whose description conflicts with the active weather tags."""
+    filtered_items = []
+    for item in items:
+        desc = item.description.lower()
+        is_bad = False
+        for tag in weather_tags:
+            if tag in INCOMPATIBLE_KEYWORDS:
+                if any(k in desc for k in INCOMPATIBLE_KEYWORDS[tag]):
+                    is_bad = True
+                    break
+            if is_bad: break
+        if not is_bad: filtered_items.append(item)
+    return filtered_items
 
 @router.get("/recommend/{city}")
 async def recommend(
@@ -58,46 +63,21 @@ async def recommend(
     try:
         weather = await weather_service.get_current_weather(city=city)
     except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            raise HTTPException(status_code=404, detail=f"City '{city}' not found.")
+        if e.response.status_code == 404: raise HTTPException(404, detail=f"City '{city}' not found.")
         raise e
 
     ai = request.app.state.ai_service
-
-    if ai is None:
-        raise HTTPException(status_code=503, detail="AI Service is currently unavailable.")
+    if not ai: raise HTTPException(503, detail="AI Service unavailable.")
     
-    temp_label = get_temperature_label(weather.temperature)
-    feels_label = get_temperature_label(weather.feels_like)
-    humid_label = get_humidity_label(weather.humidity)
-    wind_label = get_wind_label(weather.wind_speed)
-    
-    weather_description = (
-        f"The weather is {weather.description}. "
-        f"The temperature is {temp_label} and it feels {feels_label}. "
-        f"It is {humid_label} and {wind_label}."
-    )
+    desc = f"The weather is {weather.description}. Temp is {get_temperature_label(weather.temperature)}. {get_humidity_label(weather.humidity)} and {get_wind_label(weather.wind_speed)}."
 
-    classification_result: dict = ai.classify_description(
-        text=weather_description,
-        candidate_labels=CANDIDATE_LABELS
-    )
+    results = ai.classify_description(desc, CANDIDATE_LABELS, hypothesis_template="The weather condition described is {}.")
     
-    filtered_result = {
-        label: score 
-        for label, score in classification_result.items() 
-        if score >= 85
-    }
-
-    if not filtered_result:
-        sorted_result = sorted(
-            classification_result.items(), 
-            key=lambda x: x[1], 
-            reverse=True
-        )
+    filtered_tags = {l: s for l, s in results.items() if s >= 85}
+    if not filtered_tags:
+        filtered_tags = dict(sorted(results.items(), key=lambda x: x[1], reverse=True)[:2])
         
-        filtered_result = dict(sorted_result[:2])
-        
-    recommended_items = get_items_by_tags(db=db, user_id=current_user.id, tag_names=list(filtered_result))
+    items = get_items_by_tags(db, current_user.id, list(filtered_tags))
+    final_items = filter_incompatible_items(items, list(filtered_tags.keys()))
 
-    return {"weather": weather} | {"tags": filtered_result} | {"items": recommended_items}
+    return {"weather": weather, "tags": filtered_tags, "items": final_items}

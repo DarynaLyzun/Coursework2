@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-8" style="border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 2rem;">
+    <div class="flex items-center justify-between">
+        <div style="flex: 1; margin-right: 2rem;">
+            <label class="text-xs uppercase tracking-widest text-gray">Location</label>
+            <input type="text" id="city-input" value="London" style="font-size: 3rem; font-family: 'Bodoni Moda'; border: none; border-bottom: 1px solid #333;">
+        </div>
+        <button id="get-weather" class="btn-glam">Forecast</button>
+    </div>
+</div>
+
+<div id="loading" class="hidden text-center uppercase tracking-widest text-xs">Attuning to the atmosphere...</div>
+
+<div id="dashboard-content" class="hidden grid grid-cols-2">
+    <div>
+        <div class="text-xs uppercase tracking-widest text-banana mb-4">Condition</div>
+        <h2 id="w-desc" class="font-glam text-6xl mb-8" style="text-transform: capitalize;">-</h2>
+        
+        <div class="grid grid-cols-3" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem;">
+            <div>
+                <div class="text-xs uppercase text-gray">Temp</div>
+                <div id="w-temp" class="text-4xl">-</div>
+            </div>
+            <div>
+                <div class="text-xs uppercase text-gray">Wind</div>
+                <div id="w-wind" class="text-4xl">-</div>
+            </div>
+            <div>
+                <div class="text-xs uppercase text-gray">Humidity</div>
+                <div id="w-humid" class="text-4xl">-</div>
+            </div>
+        </div>
+        
+        <div class="mb-4" style="margin-top: 2rem;">
+            <div class="text-xs uppercase tracking-widest text-gray mb-2">Detected Vibes</div>
+            <div id="ai-tags" class="flex" style="gap: 10px; flex-wrap: wrap;"></div>
+        </div>
+    </div>
+
+    <div>
+        <h3 class="font-glam text-4xl mb-8" style="font-style: italic;">Recommended Gear</h3>
+        <div id="rec-grid" class="grid grid-cols-2" style="gap: 1rem;">
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    requireAuth();
+
+    async function loadWeather() {
+        const city = document.getElementById('city-input').value;
+        const loading = document.getElementById('loading');
+        const content = document.getElementById('dashboard-content');
+        
+        loading.classList.remove('hidden');
+        content.classList.add('hidden');
+
+        try {
+            const res = await fetch(`/recommend/${city}`, {
+                headers: { "Authorization": `Bearer ${getToken()}` }
+            });
+            
+            if (res.status === 401) logout();
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.detail);
+
+            document.getElementById('w-desc').textContent = data.weather.description;
+            document.getElementById('w-temp').textContent = Math.round(data.weather.temperature) + "°C";
+            document.getElementById('w-wind').textContent = data.weather.wind_speed + " m/s";
+            document.getElementById('w-humid').textContent = data.weather.humidity + "%";
+
+            const tagsDiv = document.getElementById('ai-tags');
+            tagsDiv.innerHTML = '';
+            for (const [tag, score] of Object.entries(data.tags)) {
+                tagsDiv.innerHTML += `<span style="border:1px solid #333; padding: 2px 8px; font-size: 0.7rem; text-transform:uppercase;">${tag} ${score}%</span>`;
+            }
+
+            const grid = document.getElementById('rec-grid');
+            grid.innerHTML = '';
+            if (data.items.length === 0) {
+                grid.innerHTML = '<div class="text-gray text-xs uppercase">No matching items in closet.</div>';
+            } else {
+                data.items.forEach(item => {
+                    grid.innerHTML += `
+                        <div class="card" style="aspect-ratio: 3/4;">
+                            <img src="/static/images/${item.image_filename}">
+                            <div class="card-details">
+                                <span class="text-xs">${item.description}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            loading.classList.add('hidden');
+            content.classList.remove('hidden');
+
+        } catch (e) {
+            alert(e.message);
+            loading.classList.add('hidden');
+        }
+    }
+
+    document.getElementById('get-weather').addEventListener('click', loadWeather);
+    loadWeather();
+</script>
+{% endblock %}

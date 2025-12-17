@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="grid grid-cols-3" style="gap: 4rem;">
+    <div>
+        <div class="card" style="padding: 2rem; position: sticky; top: 100px; display: block; height: auto;">
+            <h3 class="font-glam text-4xl mb-4">New Acquisition</h3>
+            <form id="upload-form">
+                <div class="mb-4">
+                    <input type="file" id="file-input" accept="image/*" required style="border: 1px dashed #444; padding: 2rem; width: 100%;">
+                </div>
+                <div class="mb-4">
+                    <label class="text-xs uppercase text-gray">Description</label>
+                    <input type="text" id="desc-input" required placeholder="e.g. Leather Jacket">
+                </div>
+                <button type="submit" class="btn-glam" style="width: 100%;">Add to Archive</button>
+            </form>
+        </div>
+    </div>
+
+    <div style="grid-column: span 2;">
+        <h2 class="font-glam text-6xl mb-2">ARCHIVE</h2>
+        <div id="closet-grid" class="grid grid-cols-3" style="gap: 1rem;">
+            <div style="grid-column: span 3; color: #555; font-family: monospace; padding: 2rem; text-align: center;">
+                Loading archive...
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="delete-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h3 class="font-glam text-4xl mb-4">DELETE ITEM</h3>
+        <p class="text-xs uppercase tracking-widest text-gray mb-8">This action cannot be undone.</p>
+        <div class="flex" style="gap: 1rem;">
+            <button id="cancel-delete" class="btn-glam" style="background: transparent; border: 1px solid #333; color: white; flex: 1;">Cancel</button>
+            <button id="confirm-delete" class="btn-glam" style="background: #900; border: 1px solid #900; color: white; flex: 1;">Confirm</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    requireAuth();
+
+    let deleteTargetId = null;
+    const modal = document.getElementById('delete-modal');
+    const cancelBtn = document.getElementById('cancel-delete');
+    const confirmBtn = document.getElementById('confirm-delete');
+
+    function openModal(id) { deleteTargetId = id; modal.classList.remove('hidden'); }
+    function closeModal() { deleteTargetId = null; modal.classList.add('hidden'); }
+    cancelBtn.onclick = closeModal;
+    
+    confirmBtn.onclick = async () => {
+        if (!deleteTargetId) return;
+        confirmBtn.textContent = "..."; confirmBtn.disabled = true;
+        try {
+            const res = await fetch(`/closet/${deleteTargetId}`, { method: 'DELETE', headers: { "Authorization": `Bearer ${getToken()}` } });
+            if (res.ok) {
+                loadCloset();
+            } else {
+                alert("Failed to delete item");
+            }
+        } catch (e) { alert("Error connecting to server"); }
+        finally { closeModal(); confirmBtn.textContent = "Confirm"; confirmBtn.disabled = false; }
+    };
+
+    async function loadCloset() {
+        try {
+            const res = await fetch('/closet', { headers: { "Authorization": `Bearer ${getToken()}` } });
+            if (res.status === 401) { logout(); return; }
+            
+<<<<<<< HEAD
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.detail || "Failed to fetch items");
+            }
+            
+=======
+>>>>>>> 17691e1586fad95645526960ae3a34970e765427
+            const items = await res.json();
+            console.log("Closet items:", items);
+            
+            const grid = document.getElementById('closet-grid');
+            grid.innerHTML = '';
+            
+<<<<<<< HEAD
+            if (!Array.isArray(items) || items.length === 0) {
+=======
+            if (!items || items.length === 0) {
+>>>>>>> 17691e1586fad95645526960ae3a34970e765427
+                grid.innerHTML = '<div style="grid-column: span 3; color: #555; font-family: monospace; padding: 2rem; border: 1px dashed #333;">No items found in the archive.</div>';
+                return;
+            }
+
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'card';
+                div.style.aspectRatio = '3/4';
+                div.style.display = 'flex';
+                div.style.flexDirection = 'column';
+                
+                let tagsHtml = '';
+                if (Array.isArray(item.tags) && item.tags.length > 0) {
+                    tagsHtml = `<div style="position: absolute; top: 8px; left: 8px; display: flex; flex-wrap: wrap; gap: 4px; z-index: 10;">
+                        ${item.tags.map(t => `<span style="background: rgba(0,0,0,0.8); color: var(--banana); padding: 2px 5px; font-size: 0.6rem; border: 1px solid var(--banana); text-transform: uppercase;">${t}</span>`).join('')}
+                    </div>`;
+                }
+
+                div.innerHTML = `
+                    <div style="flex: 1; overflow: hidden; position: relative;">
+                        ${tagsHtml}
+                        <img src="/static/images/${item.image_filename}" 
+                             style="width: 100%; height: 100%; object-fit: cover; display: block;"
+<<<<<<< HEAD
+                             onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=&quot;display:flex;align-items:center;justify-content:center;height:100%;background:#222;color:#555;&quot;>Image not found</div>'">
+=======
+                             onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100%;background:#222;color:#555;\'>Image not found</div>'">
+>>>>>>> 17691e1586fad95645526960ae3a34970e765427
+                    </div>
+                    <div class="card-details" style="flex-shrink: 0; background: #111; padding: 12px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #222;">
+                        <span class="text-xs text-gray" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; color: #aaa; font-family: monospace;">${item.description}</span>
+                        <button class="delete-btn" data-id="${item.id}" title="Delete" style="background:none; border:none; color: #666; cursor: pointer; font-size: 1.1rem; padding: 4px;">✕</button>
+                    </div>
+                `;
+                grid.appendChild(div);
+            });
+
+            document.querySelectorAll('.delete-btn').forEach(btn => btn.onclick = (e) => { e.stopPropagation(); openModal(e.target.dataset.id); });
+
+        } catch (err) { 
+            console.error(err);
+<<<<<<< HEAD
+            document.getElementById('closet-grid').innerHTML = `<div style="color:red; grid-column: span 3; padding: 2rem; border: 1px solid red;">Error loading items: ${err.message}</div>`;
+=======
+            document.getElementById('closet-grid').innerHTML = '<div style="color:red;">Error loading items. Check console.</div>';
+>>>>>>> 17691e1586fad95645526960ae3a34970e765427
+        }
+    }
+
+    document.getElementById('upload-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const file = document.getElementById('file-input').files[0];
+        const desc = document.getElementById('desc-input').value;
+        if (!file) return;
+        
+        const btn = e.target.querySelector('button');
+        const originalText = btn.textContent;
+        btn.disabled = true; btn.textContent = "Analyzing...";
+
+        const fd = new FormData(); fd.append("file", file); fd.append("description", desc);
+        try {
+            const res = await fetch('/closet/upload', { method: "POST", headers: { "Authorization": `Bearer ${getToken()}` }, body: fd });
+            if (!res.ok) throw new Error("Upload failed");
+            
+            document.getElementById('file-input').value = ''; 
+            document.getElementById('desc-input').value = '';
+            loadCloset();
+        } catch (err) { alert("Upload failed: " + err.message); }
+        finally { btn.disabled = false; btn.textContent = originalText; }
+    };
+    
+    loadCloset();
+</script>
+{% endblock %}
